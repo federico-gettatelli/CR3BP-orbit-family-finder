@@ -1,6 +1,4 @@
 function X0 = select_initial_conditions(Lib_point_type, Orbit_type, Init_condition_type, Init_cond)
-%% help
-%SCRIVERE
 
 if ~isempty(Init_cond)
     X0 = Init_cond;
