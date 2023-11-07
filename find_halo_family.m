@@ -1,4 +1,4 @@
-function Gorbit = find_halo_family(Init_cond, Lib_point_type, Orbit_type)
+function [Gorbit, STABILITY_INDEX] = find_halo_family(Init_cond, Lib_point_type, Orbit_type)
 %% help 
 % Finds the Halo orbits, related to a specified lagrangian point,
 % through a correction scheme that laverages the x-z symmetry of the orbits
@@ -27,6 +27,9 @@ function Gorbit = find_halo_family(Init_cond, Lib_point_type, Orbit_type)
 global mu CHANGE MAX_ITER R_M2
 options = odeset('RelTol',1e-11,'AbsTol',1e-11, 'Events', 'cross_xz');
 PHI0 = reshape(eye(6),[1,36]);
+A = eye(6,6); A(2,2) = -1; A(4,4) = -1; A(6,6) = -1;
+V = [zeros(3,3) -eye(3,3); eye(3,3) -2*[0 1 0; -1 0 0; 0 0 0]];
+V1 = [-2*[0 1 0; -1 0 0; 0 0 0] eye(3,3); -eye(3,3) zeros(3,3)];
 
 X0 = Init_cond;
 X_SOL = X0;
@@ -36,7 +39,7 @@ is_finding = true;
 is_finding_iter = 0;
 norm_z_zn = 2;
 norm_x_xn = 1;
-Gorbit = [X0];
+Gorbit = [];
 
 CHANGE_DZ_AFTER_DX = false;
 STOP_CHANGE = false;
@@ -49,8 +52,9 @@ DX = CHANGE;
 if strcmp(Lib_point_type,'L2')
     DX = -DX;
 end
-MIN_Z = 0;
-iter_2 = 0;
+MIN_R = 0;
+iter_2 = 1;
+STABILITY_INDEX = [];   
 %%
 while is_finding
     vxf = 1;
@@ -83,7 +87,8 @@ while is_finding
             delx0 = M\[vxf, vzf]';
             X_SOL(1) = X_SOL(1) - delx0(1);
             X_SOL(5) = X_SOL(5) - delx0(2);
-            MIN_Z = min([abs(X_SOL(3)), abs(z)]);
+            MIN_R = min(norm([x-1+mu, y, z]), norm([X_SOL(1)-1+mu, X_SOL(2), X_SOL(3)]));
+            STABILITY_INDEX(iter_2,:) = [evaluate_stability_index(A*V*PHIf'*V1*A*PHIf), MIN_R];
             iter = iter + 1;
         end        
     elseif norm_x_xn >= norm_z_zn
@@ -115,7 +120,8 @@ while is_finding
             delx0 = M\[vxf, vzf]';
             X_SOL(3) = X_SOL(3) - delx0(1);
             X_SOL(5) = X_SOL(5) - delx0(2);
-            MIN_Z = min([abs(X_SOL(3)), abs(z)]);
+            MIN_R = min(norm([x-1+mu, y, z]), norm([X_SOL(1)-1+mu, X_SOL(2), X_SOL(3)]));
+            STABILITY_INDEX(iter_2,:) = [evaluate_stability_index(A*V*PHIf'*V1*A*PHIf), MIN_R];
             iter = iter + 1;
         end
     end
@@ -126,14 +132,15 @@ while is_finding
         norm_x_xn = abs(x0_new - x0_old);
         norm_z_zn = abs(z0_new - z0_old);
         
-        Gorbit = [Gorbit; X_SOL];
+        Gorbit(iter_2,:) = X_SOL;
         is_finding_iter = 0;
         if CHANGE_DZ_AFTER_DX
             DZ = -DZ;
             CHANGE_DZ_AFTER_DX = false;
         end
-        disp(iter)
-        iter_2 = iter_2 + 1;
+%         disp(iter)
+        disp(iter_2)
+        iter_2 = iter_2 + 1;        
     else
         is_finding_iter = is_finding_iter + 1;
         X_SOL = Gorbit(end,:) + [0 0 2*DZ 0 0 0];
@@ -141,46 +148,16 @@ while is_finding
     
     if is_finding_iter == 10
         is_finding = false;
-    elseif (MIN_Z < R_M2+CHANGE && iter_2 > 10) || iter_2 > 120
+    elseif (MIN_R < R_M2+CHANGE || iter_2 > 600)
         is_finding = false;
     end
 end
 end
 
-% T_GUESS = 3.4155;
-% options = optimoptions('fsolve','MaxIterations',1000,'MaxFunctionEvaluations',inf);
-% z0_FIXED = X_SOL(3) + DZ;
-% S_GUESS = [X_SOL(1), X_SOL(5), T_GUESS];
-% S_SOL = fsolve(@Shooting_z_fixed, S_GUESS, options);
-% X_SOL = [S_SOL(1), 0, z0_FIXED, 0, S_SOL(2), 0];
-% T_GUESS = S_SOL(3);
-% 
-% x0_FIXED = X_SOL(1) + DX;
-% S_GUESS = [X_SOL(3), X_SOL(5), T_GUESS];
-% S_SOL = fsolve(@Shooting_x_fixed, S_GUESS, options);
-% X_SOL = [x0_FIXED, 0, S_SOL(1), 0, S_SOL(2), 0];
-% T_GUESS = S_SOL(3);
-% 
-% function[ERR] = Shooting_x_fixed(S0_GUESS)
-% global x0_FIXED
-% X0_GUESS = [x0_FIXED, 0, S0_GUESS(1), 0, S0_GUESS(2), 0];
-% t_END = S0_GUESS(3);
-% 
-% options = odeset('RelTol',1e-11,'AbsTol',1e-11);
-% [~,S] = ode113(@trecorpi_nonlineare_halo, [0 t_END], X0_GUESS, options);
-% 
-% ERR = [S(end,2), S(end,4), S(end,6)];
-% 
-% end
-% 
-% function[ERR] = Shooting_z_fixed(S0_GUESS)
-% global z0_FIXED
-% X0_GUESS = [S0_GUESS(1), 0, z0_FIXED, 0, S0_GUESS(2), 0];
-% t_END = S0_GUESS(3);
-% 
-% options = odeset('RelTol',1e-11,'AbsTol',1e-11);
-% [~,S] = ode113(@trecorpi_nonlineare_halo, [0 t_END], X0_GUESS, options);
-% 
-% ERR = [S(end,2), S(end,4), S(end,6)];
-% 
-% end
+function ni = evaluate_stability_index(PHIf)
+    eigenvalues = eig(PHIf);
+    ni = zeros(1,6);
+    for j = 1:6        
+            ni(j) = real(0.5*(eigenvalues(j)+1/eigenvalues(j)));
+    end
+end

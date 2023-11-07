@@ -1,4 +1,4 @@
-function dS = trecorpi_nonlineare_halo(t,S0)
+function dS = non_linear_3body(t,S0)
     global mu
     dS = zeros(6,1);
     x = S0(1);

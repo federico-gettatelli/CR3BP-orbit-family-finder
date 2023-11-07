@@ -10,24 +10,28 @@
 clc; clear all; close all; 
 %% Choose problem
 global dconv mu CHANGE MAX_ITER R_M2
-Lib_point_type = 'L1';       
-Orbit_type = 'Hs';            
+Lib_point_type = 'L2';       
+Orbit_type = 'Hs';      
+NRHO = 'true';
+STABILITY_THRESHOLD = 1.01; %Must be slightly larger than 1
+
 Init_condition_type = 'M';    
 Init_cond = [];             
 MAX_ITER = 30;
 
 %% Variables 
 % Mass [kg]: Earth = 5.9724E24; Moon = 7.346E22;
+G = 6.6743*10^-11;
 M1 = 5.9724E24; 
 M2 = 7.346E22; 
 mu = M2/(M1+M2);
 
-G = 6.6743*10^-11;
 dconv = 338400;
+R_M2 = 1740 / dconv;
 vconv = sqrt(G*(M1+M2)/(dconv*10^9));
 tconv = dconv/vconv;
-CHANGE = 1000 / dconv; % Use low values for lyapunov orbits
-R_M2 = 1740 / dconv;
+
+CHANGE = 200 / dconv; % Use low values for lyapunov orbits
 
 [Lx,Ly] = libration_point_value(Lib_point_type, mu);
 
@@ -35,23 +39,7 @@ R_M2 = 1740 / dconv;
 Init_cond = select_initial_conditions(Lib_point_type, Orbit_type, Init_condition_type, Init_cond);
 
 %% Find Orbit Family
-Orbit_Family = find_orbit_family_initial_conditions(Lib_point_type, Orbit_type, Init_cond, Lx);
+[Orbit_Family, STABILITY_INDEX] = find_orbit_family_initial_conditions(Lib_point_type, Orbit_type, Init_cond, Lx, NRHO);
 
 %% Post Process
-figure(3)
-hold on
-
-for i=1:length(Orbit_Family(:,1))-1
-    options = odeset('RelTol',1e-11,'AbsTol',1e-11);
-    [~,X] = ode45(@trecorpi_nonlineare_halo, [0 7], Orbit_Family(i,:), options);
-    plot3(X(:,1), X(:,2), X(:,3),'b-')
-end
-
-grid on
-plot3(1-mu, 0, 0, 'or', 'MarkerSize', 6, 'MarkerFaceColor', 'r')
-plot3(Lx, Ly, 0,'or', 'MarkerSize', 6, 'MarkerFaceColor', 'b')
-
-
-
-
-
+print_figure_orbits(Orbit_Family, STABILITY_INDEX, Lx, Ly, Lib_point_type, NRHO, STABILITY_THRESHOLD)

@@ -1,4 +1,4 @@
-function Gorbit = find_orbit_family_initial_conditions(Lib_point_type, Orbit_type, Init_cond, Lx)
+function [Gorbit, STABILITY_INDEX] = find_orbit_family_initial_conditions(Lib_point_type, Orbit_type, Init_cond, Lx, NRH0)
 %% help
 % Wrapper of the functions used to find the different family of orbits 
 % around the lagrangian points of the CR3BP 
@@ -15,10 +15,16 @@ function Gorbit = find_orbit_family_initial_conditions(Lib_point_type, Orbit_typ
 
 switch Orbit_type
     case {'Hn','Hs'}
-        Gorbit = find_halo_family(Init_cond, Lib_point_type, Orbit_type);
+        [Gorbit, STABILITY_INDEX] = find_halo_family(Init_cond, Lib_point_type, Orbit_type);
     case 'L'
         Gorbit = find_lyapunov_family(Init_cond, Lib_point_type, Lx);
     otherwise
         msg = 'Orbit Family search algorithm not implemented';
         error(msg)
+end
+
+if ~strcmp(NRH0, 'true')
+    STABILITY_INDEX = [];
+end
+
 end
