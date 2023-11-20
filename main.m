@@ -26,7 +26,7 @@ M1 = 5.9724E24;
 M2 = 7.346E22; 
 mu = M2/(M1+M2);
 
-dconv = 338400;
+dconv = 384400;
 R_M2 = 1740 / dconv;
 vconv = sqrt(G*(M1+M2)/(dconv*10^9));
 tconv = dconv/vconv;
